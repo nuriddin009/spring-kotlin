@@ -2,6 +2,8 @@ package uz.nuriddin.springtasknuriddin
 
 import jakarta.persistence.*
 import org.hibernate.annotations.ColumnDefault
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedDate
 import java.math.BigDecimal
 import java.util.Date
 
@@ -9,7 +11,9 @@ import java.util.Date
 @MappedSuperclass
 class BaseEntity(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) var id: Long? = null,
-    @Column(nullable = false) @ColumnDefault(value = "false") var deleted: Boolean = false
+    @CreatedDate @Temporal(TemporalType.TIMESTAMP) var createdDate: Date? = null,
+    @LastModifiedDate @Temporal(TemporalType.TIMESTAMP) var modifiedDate: Date? = null,
+    @Column(nullable = false) @ColumnDefault(value = "false") var deleted: Boolean = false,
 )
 
 @Entity(name = "users")
