@@ -5,37 +5,37 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import java.math.BigDecimal
-
 
 @ControllerAdvice
 class ExceptionHandlers(
     private val errorMessageSource: ResourceBundleMessageSource
 ) {
-    @ExceptionHandler(NuriddinTaskException::class)
-    fun handleException(exception: NuriddinTaskException): ResponseEntity<*> {
+    @ExceptionHandler(DemoException::class)
+    fun handleException(exception: DemoException): ResponseEntity<*> {
         return when (exception) {
-            is UserNameExistsException -> ResponseEntity.badRequest()
-                .body(exception.getErrorMessage(errorMessageSource, exception.userName))
+            is UsernameExistsException -> ResponseEntity.badRequest()
+                .body(exception.getErrorMessage(errorMessageSource, exception.username))
 
-            is ProductFoundException -> ResponseEntity.badRequest()
+            is UserNotFoundException -> ResponseEntity.badRequest()
+                .body(exception.getErrorMessage(errorMessageSource, exception.id))
+
+            is UserPaymentTransactionNotFoundException -> ResponseEntity.badRequest()
                 .body(exception.getErrorMessage(errorMessageSource, exception.id))
 
             is CategoryNotFoundException -> ResponseEntity.badRequest()
                 .body(exception.getErrorMessage(errorMessageSource, exception.id))
 
-            is UserNotFoundException -> ResponseEntity.badRequest()
+            is ProductNotFoundException -> ResponseEntity.badRequest()
                 .body(exception.getErrorMessage(errorMessageSource, exception.id))
 
-            is BalanceNotEnoughException -> ResponseEntity.badRequest()
-                .body(exception.getErrorMessage(errorMessageSource, exception.balance))
+            is ProductIsNotEnoughException -> ResponseEntity.badRequest()
+                .body(exception.getErrorMessage(errorMessageSource, exception.count))
+
+            is BalanceIsNotEnoughException -> ResponseEntity.badRequest()
+                .body(exception.getErrorMessage(errorMessageSource, exception.price))
 
             is TransactionNotFoundException -> ResponseEntity.badRequest()
                 .body(exception.getErrorMessage(errorMessageSource, exception.id))
-
-            is TransactionItemNotFoundException -> ResponseEntity.badRequest()
-                .body(exception.getErrorMessage(errorMessageSource, exception.id))
-
         }
     }
 }
@@ -45,23 +45,68 @@ class ExceptionHandlers(
 class UserController(private val service: UserService) {
 
     @PostMapping
-    fun create(@RequestBody dto: UserCreateDto) = service.create(dto)
+    fun create(@RequestBody dto: UserCreateDTO) = service.create(dto)
 
     @PutMapping("{id}")
-    fun update(@PathVariable id: Long, @RequestBody dto: UserUpdateDto) = service.update(id, dto)
-
-    @PutMapping("{id}")
-    fun addBalanceToUser(@PathVariable id: Long, @RequestBody money: BigDecimal) = service.addBalance(id, money)
+    fun update(@PathVariable id: Long, @RequestBody dto: UserUpdateDTO) = service.update(id, dto)
 
     @GetMapping("{id}")
-    fun getOne(@PathVariable id: Long): Unit = service.getOne(id)
+    fun getOne(@PathVariable id: Long): GetOneUserDTO = service.getOne(id)
 
     @GetMapping
-    fun getAll(pageable: Pageable): Page<GetOneUserDto> = service.getAll(pageable)
+    fun getAll(pageable: Pageable): Page<GetOneUserDTO> = service.getAll(pageable)
 
     @DeleteMapping("{id}")
     fun delete(@PathVariable id: Long) = service.delete(id)
+
 }
+
+@RestController
+@RequestMapping("api/v1/userPaymentTransaction")
+class UserPaymentTransactionController(private val service: UserPaymentTransactionService) {
+
+    @PostMapping
+    fun payment(@RequestBody dto: UserPaymentTransactionCreateDTO) =
+        service.payment(dto)
+
+    @GetMapping
+    fun getPayments(pageable: Pageable): Page<GetOneUserPaymentTransactionDTO> =
+        service.getPayments(pageable)
+
+}
+
+@RestController
+@RequestMapping("api/v1/transaction")
+class TransactionController(private val service: TransactionService) {
+
+    @GetMapping
+    fun getAll(pageable: Pageable): Page<GetOneTransactionDTO> =
+        service.getAll(pageable)
+
+}
+
+@RestController
+@RequestMapping("api/v1/transactionItem")
+class TransactionItemController(private val service: TransactionItemService) {
+
+    @PostMapping
+    fun purchase(@RequestBody dto: PurchaseDTO) = service.purchase(dto)
+
+    @GetMapping("user/{userId}")
+    fun getPurchasesByUser(pageable: Pageable, @PathVariable userId: Long): Page<GetOnePurchaseDTO> =
+        service.getPurchasesByUser(pageable, userId)
+
+    @GetMapping("transaction/{transactionId}")
+    fun getPurchasesByTransaction(
+        pageable: Pageable,
+        @PathVariable transactionId: Long
+    ): Page<GetOnePurchaseDTO> = service.getPurchasesByTransaction(
+        pageable,
+        transactionId
+    )
+
+}
+
 
 
 @RestController
@@ -69,19 +114,20 @@ class UserController(private val service: UserService) {
 class CategoryController(private val service: CategoryService) {
 
     @PostMapping
-    fun create(@RequestBody dto: CategoryCreateDto) = service.create(dto)
+    fun create(@RequestBody dto: CategoryCreateDTO) = service.create(dto)
 
     @PutMapping("{id}")
-    fun update(@PathVariable id: Long, @RequestBody dto: CategoryUpdateDto) = service.update(id, dto)
+    fun update(@PathVariable id: Long, @RequestBody dto: CategoryUpdateDTO) = service.update(id, dto)
 
     @GetMapping("{id}")
-    fun getOne(@PathVariable id: Long): GetOneCategoryDto = service.getOne(id)
+    fun getOne(@PathVariable id: Long): GetOneCategoryDTO = service.getOne(id)
 
     @GetMapping
-    fun getAll(pageable: Pageable): Page<GetOneCategoryDto> = service.getAll(pageable)
+    fun getAll(pageable: Pageable): Page<GetOneCategoryDTO> = service.getAll(pageable)
 
     @DeleteMapping("{id}")
     fun delete(@PathVariable id: Long) = service.delete(id)
+
 }
 
 @RestController
@@ -89,44 +135,19 @@ class CategoryController(private val service: CategoryService) {
 class ProductController(private val service: ProductService) {
 
     @PostMapping
-    fun create(@RequestBody dto: ProductCreateDto) = service.create(dto)
+    fun create(@RequestBody dto: ProductCreateDTO) = service.create(dto)
 
     @PutMapping("{id}")
-    fun update(@PathVariable id: Long, @RequestBody dto: ProductUpdateDto) = service.update(id, dto)
+    fun update(@PathVariable id: Long, @RequestBody dto: ProductUpdateDTO) = service.update(id, dto)
 
     @GetMapping("{id}")
-    fun getOne(@PathVariable id: Long): GetOneProductDto = service.getOne(id)
+    fun getOne(@PathVariable id: Long): GetOneProductDTO = service.getOne(id)
 
     @GetMapping
-    fun getAll(pageable: Pageable): Page<GetOneProductDto> = service.getAll(pageable)
+    fun getAll(pageable: Pageable): Page<GetOneProductDTO> = service.getAll(pageable)
 
     @DeleteMapping("{id}")
     fun delete(@PathVariable id: Long) = service.delete(id)
 
 }
-
-//@RestController
-//@RequestMapping("api/v1/transactionItem")
-//class TransactionItemController(private val service: TransactionItemService) {
-//
-//    @PostMapping
-//    fun create(@RequestBody dto: TransactionItemCreateDto) = service.create(dto)
-//
-//    @PutMapping("{id}")
-//    fun update(@PathVariable id: Long, @RequestBody dto: TransactionItemUpdateDto) = service.update(id, dto)
-//
-//    @GetMapping("{id}")
-//    fun getOne(@PathVariable id: Long): GetOneTransactionItemDto = service.getOne(id)
-//
-//    @GetMapping
-//    fun getAll(pageable: Pageable): Page<GetOneTransactionItemDto> = service.getAll(pageable)
-//
-//    @DeleteMapping("{id}")
-//    fun delete(@PathVariable id: Long) = service.delete(id)
-//}
-
-
-
-
-
 

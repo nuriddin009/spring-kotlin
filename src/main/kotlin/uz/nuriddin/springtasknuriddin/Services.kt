@@ -1,243 +1,241 @@
 package uz.nuriddin.springtasknuriddin
 
 import jakarta.persistence.EntityManager
-import jakarta.transaction.Transactional
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
-import java.util.*
-
 
 interface UserService {
-    fun create(dto: UserCreateDto)
-    fun update(id: Long, dto: UserUpdateDto)
-    fun getOne(id: Long)
-    fun getAll(pageable: Pageable): Page<GetOneUserDto>
+    fun create(dto: UserCreateDTO)
+    fun update(id: Long, dto: UserUpdateDTO)
+    fun getOne(id: Long): GetOneUserDTO
+    fun getAll(pageable: Pageable): Page<GetOneUserDTO>
     fun delete(id: Long)
+}
 
-    fun addBalance(id: Long, money: BigDecimal)
+interface UserPaymentTransactionService {
+    fun payment(dto: UserPaymentTransactionCreateDTO)
+    fun getPayments(pageable: Pageable): Page<GetOneUserPaymentTransactionDTO>
 }
 
 interface CategoryService {
-    fun create(dto: CategoryCreateDto)
-    fun update(id: Long, dto: CategoryUpdateDto)
-    fun getOne(id: Long): GetOneCategoryDto
-    fun getAll(pageable: Pageable): Page<GetOneCategoryDto>
+    fun create(dto: CategoryCreateDTO)
+    fun update(id: Long, dto: CategoryUpdateDTO)
+    fun getOne(id: Long): GetOneCategoryDTO
+    fun getAll(pageable: Pageable): Page<GetOneCategoryDTO>
     fun delete(id: Long)
 }
 
 interface ProductService {
-    fun create(dto: ProductCreateDto)
-    fun update(id: Long, dto: ProductUpdateDto)
-    fun getOne(id: Long): GetOneProductDto
-    fun getAll(pageable: Pageable): Page<GetOneProductDto>
+    fun create(dto: ProductCreateDTO)
+    fun update(id: Long, dto: ProductUpdateDTO)
+    fun getOne(id: Long): GetOneProductDTO
+    fun getAll(pageable: Pageable): Page<GetOneProductDTO>
     fun delete(id: Long)
-}
-
-
-interface UserPaymentTransactionService {
-    fun getAllByUser(id: Long, pageable: Pageable): Page<GetOneUserTransactionPaymentDTO>
 }
 
 interface TransactionItemService {
-    fun create(dto: TransactionItemCreateDto)
-    fun update(id: Long, dto: TransactionItemUpdateDto)
-    fun getOne(id: Long): GetOneTransactionItemDto
-    fun getAll(pageable: Pageable): Page<GetOneTransactionItemDto>
-    fun delete(id: Long)
+    fun purchase(dto: PurchaseDTO)
+    fun getPurchasesByUser(pageable: Pageable, userId: Long): Page<GetOnePurchaseDTO>
+    fun getPurchasesByTransaction(pageable: Pageable, transactionId: Long): Page<GetOnePurchaseDTO>
 }
 
+interface TransactionService {
+    fun getAll(pageable: Pageable): Page<GetOneTransactionDTO>
+}
 
 @Service
 class UserServiceImpl(
-    private val userRepository: UserRepository,
-    private val userPaymentTransActionRepository: UserPaymentTransActionRepository
+    private val userRepo: UserRepository
 ) : UserService {
-    override fun create(dto: UserCreateDto) {
+    override fun create(dto: UserCreateDTO) {
         dto.run {
-            if (userRepository.existsByUserName(userName)) throw UserNameExistsException(userName)
-            userRepository.save(toEntity())
+            if (userRepo.existsByUsername(username)) throw UsernameExistsException(username)
+            userRepo.save(toEntity())
         }
     }
 
-    override fun update(id: Long, dto: UserUpdateDto) {
-
-        val user = userRepository.findByIdAndDeletedFalse(id) ?: throw UserNotFoundException(id)
-
+    override fun update(id: Long, dto: UserUpdateDTO) {
+        val user = userRepo.findByIdAndDeletedFalse(id) ?: throw UserNotFoundException(id)
         dto.run {
+            if (username?.let { userRepo.existsByUsername(it) } == true) throw UsernameExistsException(username)
             fullName?.let { user.fullName = it }
-            userName?.let { user.userName = it }
+            username?.let { user.username = it }
             balance?.let { user.balance = it }
         }
-
-        userRepository.save(user)
-
+        userRepo.save(user)
     }
 
-    override fun getOne(id: Long) {
-        userRepository.findByIdAndDeletedFalse(id)?.let { GetOneUserDto.toDto(it) }
-    }
+    override fun getOne(id: Long) =
+        userRepo.findByIdAndDeletedFalse(id)?.let { GetOneUserDTO.toDTO(it) } ?: throw UserNotFoundException(id)
 
-    override fun getAll(pageable: Pageable): Page<GetOneUserDto> {
-        return userRepository.findAllNotDeleted(pageable).map { GetOneUserDto.toDto(it) }
-    }
+
+    override fun getAll(pageable: Pageable) = userRepo.findAllNotDeleted(pageable).map { GetOneUserDTO.toDTO(it) }
 
     override fun delete(id: Long) {
-        userRepository.trash(id) ?: UserNotFoundException(id)
-    }
-
-    override fun addBalance(id: Long, money: BigDecimal) {
-        val user = userRepository.findByIdAndDeletedFalse(id) ?: throw UserNotFoundException(id)
-        user?.let { user.balance = user.balance + money }
-        userRepository.save(user)
-        val userPaymentTransAction = UserPaymentTransAction(user, money, date = Date())
-        userPaymentTransActionRepository.save(userPaymentTransAction)
-    }
-
-}
-
-@Service
-class CategoryServiceImpl(
-    private val categoryRepository: CategoryRepository
-) : CategoryService {
-
-
-    override fun create(dto: CategoryCreateDto) {
-        dto.run { categoryRepository.save(toEntity()) }
-    }
-
-    override fun update(id: Long, dto: CategoryUpdateDto) {
-        val category = categoryRepository.findByIdAndDeletedFalse(id) ?: throw CategoryNotFoundException(id)
-        dto.run {
-            name?.let { category.name = it }
-            order?.let { category.order = it }
-            description?.let { category.description = it }
-        }
-        categoryRepository.save(category)
-    }
-
-    override fun getOne(id: Long): GetOneCategoryDto {
-        return categoryRepository.findByIdAndDeletedFalse(id)?.let { GetOneCategoryDto.toDto(it) }
-            ?: throw CategoryNotFoundException(id)
-    }
-
-    override fun getAll(pageable: Pageable): Page<GetOneCategoryDto> {
-        return categoryRepository.findAllNotDeleted(pageable).map { GetOneCategoryDto.toDto(it) }
-    }
-
-    override fun delete(id: Long) {
-        categoryRepository.trash(id) ?: throw CategoryNotFoundException(id)
-    }
-
-}
-
-
-@Service
-class ProductServiceImpl(
-    private val productRepository: ProductRepository,
-    private val categoryRepository: CategoryRepository,
-    private val entityManager: EntityManager
-) : ProductService {
-
-    @Transactional
-    override fun create(dto: ProductCreateDto) {
-        dto.run {
-            val category = categoryId.let {
-                categoryRepository.existsByIdAndDeletedFalse(it).runIfFalse { throw CategoryNotFoundException(it) }
-                entityManager.getReference(Category::class.java, it)
-            }
-            productRepository.save(toEntity(category))
-        }
-    }
-
-    override fun update(id: Long, dto: ProductUpdateDto) {
-        val product = productRepository.findByIdAndDeletedFalse(id) ?: throw ProductFoundException(id)
-        dto.run {
-            val category = categoryId?.let {
-                categoryRepository.existsByIdAndDeletedFalse(it).runIfFalse { throw CategoryNotFoundException(it) }
-                entityManager.getReference(Category::class.java, it)
-            }
-            name?.let { product.name = it }
-            count?.let { product.count = count }
-            category?.let { product.category = it }
-            productRepository.save(product)
-        }
-    }
-
-    override fun getOne(id: Long): GetOneProductDto {
-        return productRepository.findByIdAndDeletedFalse(id)?.let { GetOneProductDto.toDto(it) }
-            ?: throw ProductFoundException(id)
-    }
-
-    override fun getAll(pageable: Pageable): Page<GetOneProductDto> {
-        return productRepository.findAllNotDeleted(pageable).map { GetOneProductDto.toDto(it) }
-    }
-
-    override fun delete(id: Long) {
-        productRepository.trash(id) ?: throw ProductFoundException(id)
+        userRepo.trash(id) ?: throw UserNotFoundException(id)
     }
 
 }
 
 @Service
 class UserPaymentTransactionServiceImpl(
-    private val userPaymentTransActionRepository: UserPaymentTransActionRepository,
-    private val userRepository: UserRepository
+    private val userPaymentTransactionRepo: UserPaymentTransactionRepository,
+    private val userRepo: UserRepository,
 ) : UserPaymentTransactionService {
-    override fun getAllByUser(id: Long, pageable: Pageable): Page<GetOneUserTransactionPaymentDTO> {
-       return userPaymentTransActionRepository.findAllByUserIdAndDeletedFalse(id,pageable)
+    override fun payment(dto: UserPaymentTransactionCreateDTO) {
+        dto.run {
+            val user = userId.let {
+                userRepo.findByIdAndDeletedFalse(it) ?: throw UserNotFoundException(userId)
+            }
+            val savedUser = user.run {
+                balance += amount
+                userRepo.save(user)
+            }
+            userPaymentTransactionRepo.save(toEntity(savedUser))
+        }
     }
+
+    override fun getPayments(pageable: Pageable): Page<GetOneUserPaymentTransactionDTO> =
+        userPaymentTransactionRepo.findAllNotDeleted(pageable).map { GetOneUserPaymentTransactionDTO.toDTO(it) }
+
 }
 
-//@Service
-//class TransactionItemServiceImpl(
-//    private val transActionRepository: UserPaymentTransActionRepository,
-//    private val productRepository: ProductRepository,
-//    private val transActionRepository: UserPaymentTransActionRepository,
-//    private val entityManager: EntityManager
-//) : TransactionItemService {
-//
-//
-//    @Transactional
-//    override fun create(dto: TransactionItemCreateDto) {
-//        dto.run {
-//            val product = productId?.let {
-//                productRepository.existsByIdAndDeletedFalse(it).runIfFalse { throw ProductFoundException(it) }
-//                entityManager.getReference(Product::class.java, it)
-//            }
-//            val transaction = transactionId?.let {
-//                transActionRepository.existsByIdAndDeletedFalse(it).runIfFalse { throw ProductFoundException(it) }
-//                entityManager.getReference(Transaction::class.java, it)
-//            }
-//            transActionRepository.save(toEntity(product, transaction))
-//        }
-//    }
-//
-//    override fun update(id: Long, dto: TransactionItemUpdateDto) {
-//        val transactionItem =
-//            transactionItemRepository.findByIdAndDeletedFalse(id) ?: throw TransactionItemNotFoundException(id)
-////        dto.run {
-////            count?.let { transactionItem.count = it }
-////            amount?.let { transactionItem.amount = it }
-////            totalAmount?.let { transactionItem.total = it }
-////        }
-//        transactionItemRepository.save(transactionItem)
-//    }
-//
-//    override fun getOne(id: Long) =
-//        transactionItemRepository.findByIdAndDeletedFalse(id)?.let { GetOneTransactionItemDto.toDto(it) }
-//            ?: throw TransactionItemNotFoundException(id)
-//
-//    override fun getAll(pageable: Pageable) =
-//        transactionItemRepository.findAllNotDeleted(pageable).map { GetOneTransactionItemDto.toDto(it) }
-//
-//    override fun delete(id: Long) {
-//        transactionItemRepository.trash(id) ?: throw TransactionItemNotFoundException(id)
-//    }
-//
-//}
+@Service
+class CategoryServiceImpl(
+    private val categoryRepo: CategoryRepository
+) : CategoryService {
 
+    override fun create(dto: CategoryCreateDTO) {
+        dto.run {
+            categoryRepo.save(toEntity())
+        }
+    }
 
+    override fun update(id: Long, dto: CategoryUpdateDTO) {
+        val category = categoryRepo.findByIdAndDeletedFalse(id) ?: throw CategoryNotFoundException(id)
+        dto.run {
+            name?.let { category.name = it }
+            orders?.let { category.orders = it }
+            description?.let { category.description = it }
+        }
+        categoryRepo.save(category)
+    }
 
+    override fun getOne(id: Long) = categoryRepo.findByIdAndDeletedFalse(id)?.let { GetOneCategoryDTO.toDTO(it) }
+        ?: throw CategoryNotFoundException(id)
 
+    override fun getAll(pageable: Pageable) =
+        categoryRepo.findAllNotDeleted(pageable).map { GetOneCategoryDTO.toDTO(it) }
+
+    override fun delete(id: Long) {
+        categoryRepo.trash(id) ?: throw CategoryNotFoundException(id)
+    }
+
+}
+
+@Service
+class ProductServiceImpl(
+    private val productRepo: ProductRepository,
+    private val categoryRepo: CategoryRepository,
+    private val entityManager: EntityManager
+) : ProductService {
+
+    override fun create(dto: ProductCreateDTO) {
+        dto.run {
+            val category = categoryId.let {
+                categoryRepo.existsByIdAndDeletedFalse(it).runIfFalse { throw CategoryNotFoundException(it) }
+                entityManager.getReference(Category::class.java, it)
+            }
+            productRepo.save(toEntity(category))
+        }
+    }
+
+    override fun update(id: Long, dto: ProductUpdateDTO) {
+        val product = productRepo.findByIdAndDeletedFalse(id) ?: throw ProductNotFoundException(id)
+        dto.run {
+            val category = categoryId?.let {
+                categoryRepo.existsByIdAndDeletedFalse(it).runIfFalse { throw CategoryNotFoundException(it) }
+                entityManager.getReference(Category::class.java, it)
+            }
+            name?.let { product.name = it }
+            count?.let { product.count = it }
+            category?.let {
+                product.category = it
+            }
+            productRepo.save(product)
+        }
+    }
+
+    override fun getOne(id: Long) = productRepo.findByIdAndDeletedFalse(id)?.let { GetOneProductDTO.toDTO(it) }
+        ?: throw ProductNotFoundException(id)
+
+    override fun getAll(pageable: Pageable) = productRepo.findAllNotDeleted(pageable).map { GetOneProductDTO.toDTO(it) }
+
+    override fun delete(id: Long) {
+        productRepo.trash(id) ?: throw ProductNotFoundException(id)
+    }
+
+    @Service
+    class TransactionItemServiceImpl(
+        private val transactionItemRepo: TransactionItemRepository,
+        private val transactionRepo: TransactionRepository,
+        private val productRepo: ProductRepository,
+        private val userRepo: UserRepository,
+    ) : TransactionItemService {
+        override fun purchase(dto: PurchaseDTO) {
+            dto.run {
+                var product = productId.let {
+                    productRepo.findByIdAndDeletedFalse(it) ?: throw ProductNotFoundException(it)
+                }
+                var user = userId.let {
+                    userRepo.findByIdAndDeletedFalse(it) ?: throw UserNotFoundException(it)
+                }
+
+                if (product.count < count)
+                    throw ProductIsNotEnoughException(count)
+                if (user.balance < BigDecimal.valueOf(count) * price)
+                    throw BalanceIsNotEnoughException(BigDecimal.valueOf(count) * price)
+
+                product = count.let {
+                    product.count -= it
+                    productRepo.save(product)
+                }
+                user = price.let {
+                    user.balance -= it * BigDecimal.valueOf(count)
+                    userRepo.save(user)
+                }
+                val transaction =
+                    transactionRepo.findByDateAndUserIdAndDeletedFalse(date, userId)
+                if (transaction != null)
+                    transactionItemRepo.save(toTransactionItemEntity(product, transaction))
+                else {
+                    val newTransaction = transactionRepo.save(toTransactionEntity(user))
+                    transactionItemRepo.save(toTransactionItemEntity(product, newTransaction))
+                }
+            }
+        }
+
+        override fun getPurchasesByUser(pageable: Pageable, userId: Long): Page<GetOnePurchaseDTO> {
+            userRepo.existsById(userId).runIfFalse { throw UserNotFoundException(userId) }
+            return transactionItemRepo.findAllByTransactionUserId(pageable, userId).map { GetOnePurchaseDTO.toDTO(it) }
+        }
+
+        override fun getPurchasesByTransaction(pageable: Pageable, transactionId: Long): Page<GetOnePurchaseDTO> {
+            transactionRepo.existsById(transactionId).runIfFalse { throw TransactionNotFoundException(transactionId) }
+            return transactionItemRepo.findAllByTransactionId(pageable, transactionId)
+                .map { GetOnePurchaseDTO.toDTO(it) }
+        }
+
+    }
+
+    @Service
+    class TransactionServiceImpl(
+        private val transactionRepo: TransactionRepository
+    ) : TransactionService {
+        override fun getAll(pageable: Pageable) =
+            transactionRepo.findAllNotDeleted(pageable).map { GetOneTransactionDTO.toDTO(it) }
+    }
+
+}

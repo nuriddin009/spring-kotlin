@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.support.JpaEntityInformation
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.data.repository.NoRepositoryBean
 import org.springframework.data.repository.findByIdOrNull
+import java.util.*
 
 
 @NoRepositoryBean
@@ -41,30 +42,28 @@ class BaseRepositoryImpl<T : BaseEntity>(
     override fun trashList(ids: List<Long>): List<T?> = ids.map { trash(it) }
 }
 
-
 interface UserRepository : BaseRepository<User> {
-    fun existsByUserName(userName: String): Boolean
-}
 
-interface UserPaymentTransActionRepository : BaseRepository<UserPaymentTransAction> {
-    fun findAllByUserIdAndDeletedFalse(id: Long, pageable: Pageable): Page<GetOneUserTransactionPaymentDTO>
-}
-
-
-interface TransActionRepository : BaseRepository<Transaction> {
+    fun existsByUsername(username: String): Boolean
 
 }
 
-interface TransActionItemRepository : BaseRepository<TransactionItem> {
+interface UserPaymentTransactionRepository : BaseRepository<UserPaymentTransaction> {
 
-}
-
-
-interface ProductRepository : BaseRepository<Product> {
-    fun existsByIdAndDeletedFalse(id: Long): Boolean
 }
 
 interface CategoryRepository : BaseRepository<Category> {
     fun existsByIdAndDeletedFalse(id: Long): Boolean
+}
 
+interface ProductRepository : BaseRepository<Product> {
+}
+
+interface TransactionRepository : BaseRepository<Transaction> {
+    fun findByDateAndUserIdAndDeletedFalse(date: Date, userId: Long):Transaction?
+}
+
+interface TransactionItemRepository : BaseRepository<TransactionItem> {
+    fun findAllByTransactionUserId(pageable: Pageable, transactionUserId: Long): Page<TransactionItem>
+    fun findAllByTransactionId(pageable: Pageable, transactionId: Long): Page<TransactionItem>
 }

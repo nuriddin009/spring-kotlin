@@ -1,4 +1,4 @@
-package uz.demo.springdemo
+package uz.nuriddin.springtasknuriddin
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -12,7 +12,6 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.springframework.web.servlet.i18n.SessionLocaleResolver
 import java.util.*
-
 
 @Configuration
 class WebMvcConfigure : WebMvcConfigurer {

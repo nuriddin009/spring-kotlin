@@ -1,5 +1,6 @@
 package uz.nuriddin.springtasknuriddin
 
+
 fun Boolean.runIfFalse(func: () -> Unit) {
-    if (!this) func()
+    if (this) func()
 }

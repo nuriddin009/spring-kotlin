@@ -4,133 +4,31 @@ import java.math.BigDecimal
 import java.util.*
 
 data class BaseMessage(val code: Int, val message: String?)
-
-
-data class UserCreateDto(
-    val balance: BigDecimal,
-    val userName: String,
+data class UserCreateDTO(
     val fullName: String,
+    val username: String,
 ) {
-    fun toEntity() = User(userName, fullName, balance)
+    fun toEntity() = User(fullName, username, BigDecimal.valueOf(0))
 }
 
-
-data class UserUpdateDto(
-    val balance: BigDecimal?,
-    val userName: String?,
+data class UserUpdateDTO(
     val fullName: String?,
+    val username: String?,
+    val balance: BigDecimal?
 )
 
-data class GetOneUserDto(
+data class GetOneUserDTO(
     val id: Long?,
-    val balance: BigDecimal,
-    val userName: String,
-    val fullName: String
+    val fullName: String,
+    val username: String,
+    val balance: BigDecimal
 ) {
     companion object {
-        fun toDto(user: User): GetOneUserDto {
+        fun toDTO(user: User): GetOneUserDTO {
             return user.run {
-                GetOneUserDto(id, balance, userName, fullName)
+                GetOneUserDTO(id, fullName, username, balance)
             }
         }
-    }
-}
-
-
-/*   User transaction payment     */
-
-//data class UserPaymentTransActionCreateDto(
-//    val amount: BigDecimal,
-//    val userId: Long?
-//) {
-//    companion object {
-//        fun toEntity(user: User?) = UserPaymentTransAction();
-//    }
-//}
-
-//data class UserPaymentTransActionUpdateDto(
-//    val id:Long?,
-//    val amount:BigDecimal,
-//    val
-//) {
-//
-//}
-//
-//data class GetOneUserTransActionPaymentsDto() {
-//
-//}
-
-
-/*
-*
-*
-* Category dto
-*
-* */
-
-
-data class CategoryCreateDto(
-    val name: String,
-    val order: Long,
-    val description: String
-) {
-    fun toEntity() = Category(name, order, description)
-}
-
-data class CategoryUpdateDto(
-    val name: String,
-    val order: Long,
-    val description: String
-)
-
-data class GetOneCategoryDto(
-    val id: Long?,
-    val name: String,
-    val order: Long,
-    val description: String?
-) {
-    companion object {
-        fun toDto(category: Category): GetOneCategoryDto {
-            category.run {
-                return GetOneCategoryDto(id, name, order, description)
-            }
-        }
-    }
-}
-
-
-/* Product */
-data class ProductCreateDto(
-    val name: String,
-    val count: Long,
-    val description: String,
-    val categoryId: Long
-) {
-    fun toEntity(category: Category) = Product(name, count, description, category)
-}
-
-data class ProductUpdateDto(
-    val name: String,
-    val count: Long,
-    val description: String,
-    val categoryId: Long?
-)
-
-data class GetOneProductDto(
-    val id: Long?,
-    val name: String,
-    val count: Long,
-    val description: String?,
-    val categoryId: Long?
-) {
-    companion object {
-
-        fun toDto(product: Product): GetOneProductDto {
-            product.run {
-                return GetOneProductDto(id, name, count, description, category.id)
-            }
-        }
-
     }
 }
 
@@ -140,120 +38,122 @@ data class UserPaymentTransactionCreateDTO(
     val date: Date,
     val userId: Long
 ) {
-    fun toEntity(user: User) = UserPaymentTransAction(user, amount, date)
+    fun toEntity(user: User) = UserPaymentTransaction(amount, date, user)
 }
 
-data class GetOneUserTransactionPaymentDTO(
-    val userId: Long
-)
-
-data class UserPaymentTransactionCreateDto(
-    val userId: Long?,
-    val date: Date,
-    val amount: BigDecimal
-) {
-    fun toEntity(user: User) = UserPaymentTransAction(user, amount, date)
-}
-
-data class UserPaymentTransactionUpdateDto(
-    val amount: BigDecimal?
-)
-
-data class GetOneUserPaymentTransactionDto(
+data class GetOneUserPaymentTransactionDTO(
+    val id: Long?,
     val amount: BigDecimal,
-    var date: Date?,
-    val username: String?,
+    val date: Date,
+    val userId: Long?
 ) {
     companion object {
-        fun toDto(userPaymentTransaction: UserPaymentTransAction): GetOneUserPaymentTransactionDto {
-            return userPaymentTransaction.run {
-                GetOneUserPaymentTransactionDto(amount, date, user?.userName)
+        fun toDTO(userPaymentTransaction: UserPaymentTransaction): GetOneUserPaymentTransactionDTO {
+            userPaymentTransaction.run {
+                return GetOneUserPaymentTransactionDTO(id, amount, date, user.id)
             }
         }
     }
 }
 
 
-data class PaymentDTO(
+data class CategoryCreateDTO(
+    val name: String,
+    val orders: Long,
+    val description: String?
+) {
+    fun toEntity() = Category(name, orders, description)
+}
+
+data class CategoryUpdateDTO(
+    val name: String?,
+    val orders: Long?,
+    val description: String?
+)
+
+data class GetOneCategoryDTO(
+    val id: Long?,
+    val name: String,
+    val orders: Long,
+    val description: String?
+) {
+    companion object {
+        fun toDTO(category: Category): GetOneCategoryDTO {
+            category.run {
+                return GetOneCategoryDTO(id, name, orders, description)
+            }
+        }
+    }
+}
+
+
+data class ProductCreateDTO(
+    val name: String,
+    val count: Long,
+    val categoryId: Long
+) {
+    fun toEntity(category: Category) = Product(name, count, category)
+}
+
+data class ProductUpdateDTO(
+    val name: String?,
+    val count: Long?,
+    val categoryId: Long?
+)
+
+data class GetOneProductDTO(
+    val id: Long?,
+    val name: String,
+    val count: Long,
+    val categoryId: Long?
+) {
+    companion object {
+        fun toDTO(product: Product): GetOneProductDTO {
+            product.run {
+                return GetOneProductDTO(id, name, count, category.id)
+            }
+        }
+    }
+}
+
+
+data class PurchaseDTO(
     val count: Long,
     val price: BigDecimal,
     val productId: Long,
     val date: Date,
     val userId: Long
 ) {
-
-
+    fun toTransactionEntity(user: User) = Transaction(BigDecimal.valueOf(count) * price, date, user)
+    fun toTransactionItemEntity(product: Product, transaction: Transaction) =
+        TransactionItem(count, price, BigDecimal.valueOf(count) * price, product, transaction)
 }
 
-data class GetOnePaymentDTO(
+data class GetOnePurchaseDTO(
     val count: Long,
-    val amount: BigDecimal,
-    val totalAmount: BigDecimal,
+    val price: BigDecimal,
+    val totalPrice: BigDecimal,
     val productId: Long?,
 ) {
     companion object {
-        fun toDTO(transactionItem: TransactionItem): GetOnePaymentDTO {
+        fun toDTO(transactionItem: TransactionItem): GetOnePurchaseDTO {
             transactionItem.run {
-                return GetOnePaymentDTO(count, amount, totalAmount, product.id)
+                return GetOnePurchaseDTO(count, price, totalPrice, product.id)
             }
         }
     }
 }
 
 data class GetOneTransactionDTO(
-    val totalAmount: BigDecimal,
+    val totalPrice: BigDecimal,
     val date: Date,
     val userId: Long?
 ) {
     companion object {
         fun toDTO(transaction: Transaction): GetOneTransactionDTO {
             transaction.run {
-                return GetOneTransactionDTO(totalAmount, date, user.id)
+                return GetOneTransactionDTO(totalPrice, date, user.id)
             }
         }
     }
 }
-
-data class TransactionItemCreateDto(
-    val productId: Long? = null,
-    val count: Long,
-    val amount: BigDecimal,
-    val totalAmount: BigDecimal,
-    val transactionId: Long?
-
-) {
-    fun toEntity(product: Product?, transaction: Transaction?) =
-        product?.let {
-            if (transaction != null) {
-                TransactionItem(it, count, amount, totalAmount, transaction)
-            }
-        }
-}
-
-data class TransactionItemUpdateDto(
-    val count: Long?,
-    val amount: BigDecimal?,
-    val totalAmount: BigDecimal?,
-)
-
-data class GetOneTransactionItemDto(
-    val productName: String?,
-    val count: Long,
-    val amount: BigDecimal,
-    val totalAmount: BigDecimal,
-    val transaction: Transaction?
-) {
-    companion object {
-        fun toDto(transactionItem: TransactionItem): GetOneTransactionItemDto {
-            return transactionItem.run {
-                GetOneTransactionItemDto(product?.name, count, amount, totalAmount, transaction)
-            }
-        }
-    }
-}
-
-
-
-
-
-

@@ -5,7 +5,7 @@ import org.springframework.context.support.ResourceBundleMessageSource
 import java.math.BigDecimal
 import java.util.*
 
-sealed class NuriddinTaskException(message: String? = null) : RuntimeException(message) {
+sealed class DemoException(message: String? = null) : RuntimeException(message) {
     abstract fun errorType(): ErrorCode
 
     fun getErrorMessage(errorMessageSource: ResourceBundleMessageSource, vararg array: Any?): BaseMessage {
@@ -20,33 +20,34 @@ sealed class NuriddinTaskException(message: String? = null) : RuntimeException(m
     }
 }
 
-class UserNameExistsException(val userName: String) : NuriddinTaskException() {
-    override fun errorType() = ErrorCode.USER_NAME_EXISTS
+class UsernameExistsException(val username: String) : DemoException() {
+    override fun errorType() = ErrorCode.USERNAME_EXISTS
 }
 
-class TransactionNotFoundException(val id: Long) : NuriddinTaskException() {
-    override fun errorType(): ErrorCode = ErrorCode.TRANSACTION_NOT_FOUND
-}
-
-class CategoryNotFoundException(val id: Long) : NuriddinTaskException() {
-    override fun errorType(): ErrorCode = ErrorCode.CATEGORY_NOT_FOUND
-}
-
-class UserNotFoundException(val id: Long) : NuriddinTaskException() {
+class UserNotFoundException(val id: Long) : DemoException() {
     override fun errorType() = ErrorCode.USER_NOT_FOUND
 }
 
-class BalanceNotEnoughException(val balance: BigDecimal) : NuriddinTaskException() {
-    override fun errorType() = ErrorCode.BALANCE_NOT_ENOUGH
+class UserPaymentTransactionNotFoundException(val id: Long) : DemoException() {
+    override fun errorType() = ErrorCode.USER_PAYMENT_TRANSACTION_NOT_FOUND
 }
 
-class ProductFoundException(val id: Long) : NuriddinTaskException() {
+class CategoryNotFoundException(val id: Long) : DemoException() {
+    override fun errorType() = ErrorCode.CATEGORY_NOT_FOUND
+}
+
+class ProductNotFoundException(val id: Long) : DemoException() {
     override fun errorType() = ErrorCode.PRODUCT_NOT_FOUND
 }
 
-class TransactionItemNotFoundException(val id: Long) : NuriddinTaskException() {
-    override fun errorType() = ErrorCode.TRANSACTION_ITEM_NOT_FOUND
+class ProductIsNotEnoughException(val count: Long) : DemoException() {
+    override fun errorType() = ErrorCode.PRODUCT_IS_NOT_ENOUGH
 }
 
+class BalanceIsNotEnoughException(val price: BigDecimal) : DemoException() {
+    override fun errorType() = ErrorCode.BALANCE_IS_NOT_ENOUGH
+}
 
-
+class TransactionNotFoundException(val id: Long) : DemoException() {
+    override fun errorType() = ErrorCode.TRANSACTION_NOT_FOUND
+}
